@@ -1,1 +1,5 @@
-hi hello welcome to gitbash repo from local
+hi hello welcome to gitbash repo from local by lokeswar on dec05
+
+
+Exit
+
