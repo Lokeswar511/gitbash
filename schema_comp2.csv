@@ -1,0 +1,30 @@
+﻿Id,SrcFolderName,SrcFileName,SrcColumns,SrcColumnType,CreatedAt,updated_at
+1,Orders,Orders_data,Row ID,int,08-12-2023,11-12-2023
+2,Orders,Orders_data,Order ID,string,08-12-2023,11-12-2023
+3,Orders,Orders_data,Order Date,date,08-12-2023,11-12-2023
+4,Orders,Orders_data,Ship Date,date,08-12-2023,11-12-2023
+5,Orders,Orders_data,Ship Mode,string,08-12-2023,11-12-2023
+6,Orders,Orders_data,Customer ID,string,08-12-2023,11-12-2023
+7,Orders,Orders_data,Customer Name,string,08-12-2023,11-12-2023
+8,Orders,Orders_data,Segment,string,08-12-2023,11-12-2023
+9,Orders,Orders_data,City,string,08-12-2023,11-12-2023
+10,Orders,Orders_data,State,string,08-12-2023,11-12-2023
+11,Orders,Orders_data,Country,string,08-12-2023,11-12-2023
+12,Orders,Orders_data,Postal Code,int,08-12-2023,11-12-2023
+13,Orders,Orders_data,Market,string,08-12-2023,11-12-2023
+14,Orders,Orders_data,Region,string,08-12-2023,11-12-2023
+15,Orders,Orders_data,Product ID,string,08-12-2023,11-12-2023
+16,Orders,Orders_data,Category,string,08-12-2023,11-12-2023
+17,Orders,Orders_data,Sub-Category,string,08-12-2023,11-12-2023
+18,Orders,Orders_data,Product Name,string,08-12-2023,11-12-2023
+19,Orders,Orders_data,Sales,double,08-12-2023,11-12-2023
+20,Orders,Orders_data,Quantity,int,08-12-2023,11-12-2023
+21,Orders,Orders_data,Discount,double,08-12-2023,11-12-2023
+22,Orders,Orders_data,Profit,double,08-12-2023,11-12-2023
+23,Orders,Orders_data,Shipping Cost,double,08-12-2023,11-12-2023
+24,Orders,Orders_data,Order Priority,string,08-12-2023,11-12-2023
+25,Returns,Returns_data,Returned,string,08-12-2023,11-12-2023
+26,Returns,Returns_data,Order ID,string,08-12-2023,11-12-2023
+27,Returns,Returns_data,Market,string,08-12-2023,11-12-2023
+28,People,People_data,Person,string,08-12-2023,11-12-2023
+29,People,People_data,Region,string,08-12-2023,11-12-2023
