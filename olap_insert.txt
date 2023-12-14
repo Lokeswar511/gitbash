@@ -1,0 +1,671 @@
+-- insert into employees -- SCD2 -- -- -- -- -- -- -- 
+select * from olap.employees_d;
+
+ set sql_safe_updates =0;
+ UPDATE olap.employees_d a
+INNER JOIN oltp_stage.stage_employees b ON a.employee_id = b.emp_id
+SET ef_end_date = now(), last_update_date = now()
+where not (  a.mobile = b.mobile and a.last_name = b.last_name and a.address_street = b.address_street and a.city = b.address_city )
+and a.ef_end_date = STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T')
+;
+commit;
+
+insert into olap.employees_d( employee_id, first_name, last_name, dob, mobile, gender,address_street, city, last_update_date, created_date, ef_start__date, ef_end_date )
+select emp_id, first_name, last_name, dob, mobile, gender,address_street, address_city, now(),now(), now(), STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T')
+ from oltp_stage.stage_employees s 
+where not exists ( select 1 from olap.employees_d  e where e.employee_id = s.emp_id and e.ef_end_date = STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T')
+				  and  (  e.mobile = s.mobile and e.last_name = s.last_name and e.address_street = s.address_street and e.city = s.address_city ));
+commit;
+
+-- -- -- -- -- Test -- -- --
+select * from employees_d;
+update oltp_stage.stage_employees set last_name = "peddireddy" where emp_id = 11;
+
+-- -- Products SCD2 -- -- -- -- --- -----------------------------------------------------------------Products SCD2 -- ------------ --- -- 
+ set sql_safe_updates =0;
+ UPDATE olap.product_d a
+INNER JOIN oltp_stage.stage_products b ON a.product_id = b.product_id
+SET ef_end_date = now(), last_update_date = now()
+where not ( a.unit_price= b.price )
+and a.ef_end_date = STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T')
+;
+commit;
+
+insert into product_d (product_id, product_name, product_Type, unit_price, ef_start_date, ef_end_date, last_update_date, created_date)
+select product_id, productName, product_type, price, now(), STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T') ,now(), now() from oltp_stage.stage_products s 
+where not exists ( select 1 from olap.product_d d where d.product_id = s.product_id and d.ef_end_date = STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T')
+				  and  ( d.unit_price = s.price));
+commit;
+-- Test
+
+select * from product_d;
+
+update oltp_stage.stage_products set price = 40.0 where product_id = 1;
+commit;
+
+
+-- ---- Regions SCD2 -- -- --- ---  ---------------------------------------------------------------------------------------
+set sql_safe_updates =0;
+ UPDATE olap.region_d a
+INNER JOIN oltp_stage.stage_regions b ON a.region_id = b.region_id
+SET ef_end_date = now(), last_update_date = now()
+where not ( a.location= b.location )
+and a.ef_end_date = STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T')
+;
+commit;
+
+insert into region_d (region_id, region_name, city, location, state, country, zip,last_update_date, created_date, ef_start_date, ef_end_date)
+select region_id, region_name, city, location, state, country, zip,now(), now(), now(), STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T') from oltp_stage.stage_regions s
+where not exists ( select 1 from olap.region_d d where d.region_id = s.region_id and d.location = s.location and d.ef_end_date = STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T'));
+commit;
+
+-- Test -- 
+select * from region_d;
+
+update oltp_stage.stage_regions set location = 'Near ITI circle' where region_id = 'r_1';
+commit;
+
+-- -- --- ---------------------------------------- Insert Data into Date_D--- --- ---------------------------------------------------------------
+insert into date_d(Date, Day_of_week, Day_of_month, month_name, Qtr, year, last_update_date, created_date)
+WITH RECURSIVE 
+t (sr_no) AS
+(
+SELECT 1
+union all
+SELECT sr_no+1 from t where sr_no < 1000
+),
+t1 as (SELECT date_add(current_date(), interval sr_no-39 day) a FROM t )
+select *,dayname(a),day(a), monthname(a), concat('Q', quarter(a)), year(a), now(), now() from t1
+;  
+
+commit;
+
+select * from date_d;
+-- -- ---------------------------------- ------------------- Store_d SCD1------------------- --------------------- ---------------- ---------------- ---------------
+set sql_safe_updates =0;
+UPDATE olap.store_d a
+INNER JOIN oltp_stage.stage_store b ON a.store_id = b.store_id
+SET store_number = store_mobile, last_Update_date = now()
+where a.store_number != b.store_mobile;
+commit;
+
+insert into olap.store_d(store_id,store_name,store_number,last_update_date, created_date)
+select store_id, storeName,store_mobile, now(),now() from oltp_stage.stage_store s 
+where not exists ( select 1 from olap.store_d  e where e.store_id = s.store_id);
+commit;
+
+-- Test: 
+select * from oltp_stage.stage_store;
+update oltp_stage.stage_store set store_mobile = "9110580632" where store_id = 1;
+commit;
+
+select * from store_d;
+
+-- -- --- ----- ---- --- -- -- -- Insert into coupon_d -- -- -- --- -- -- -- -- 
+
+insert into coupon_d (coupon_id, coupon_name, description, last_update_date, created_date) select cupon_id, cupon_Name, description, now(),now() from oltp_stage.stage_coupon s
+where not exists (select 1 from olap.coupon_d  d where d.coupon_id = s.cupon_id);
+commit;
+
+select * from coupon_d;
+
+-- -- -------------------------Insert into Customers -- -- --- ---- -----------------------
+alter table customer_d modify Customer_mobile varchar(15);
+insert into customer_d (customer_id, Customer_Name, Customer_mobile, Customer_address, Customer_city,state, zip, payment_type, last_update_date, created_date) 
+select customer_id,customer_name, phoneNumber, street_address, city, state, postal_code, payment_type, now(), now() from oltp_stage.stage_customer s
+where not exists (select 1 from olap.customer_d d where d.customer_id = s.customer_id); 
+commit;
+select * from  customer_d;
+-- -- -- --------------------------- -F_Sales -- --------------------------------------- --- 
+select * from f_sales;
+
+insert into f_sales (quantity, sal_amount, discount, last_update_date, created_date, emp_key, coupon_key, product_key, store_key, region_key, Customer_key, date_key)
+select 
+stg.Quantity,
+stg.total_price,
+stgc.per_discount,
+now(), 
+now(),
+de.emp_key,
+c.coupon_key,
+p.product_key,
+s.store_key,
+r.region_key,
+cus.Customer_key,
+da.date_key
+from 
+oltp_stage.stage_orders stg
+join employees_d de on stg.emp_order_taker_id = de.employee_id and de.ef_end_date = STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T')
+join coupon_d  c on stg.cupon_id = c.coupon_id
+join oltp_stage.stage_coupon stgc on c.coupon_id = stgc.cupon_id
+join product_d p on stg.product_id =p.product_id and p.ef_end_date = STR_TO_DATE('12/31/9999 00:00:00', '%m/%d/%Y %T')
+join store_d s on stg.store_id = s.store_id 
+join region_d r on stg.region_id = r.region_id
+join customer_d cus on stg.customer_id = cus.customer_id
+join date_d da on stg.order_Date = da.Date;
+
+select * from oltp_stage.stage_orders;
+select * from f_sales;
+
+
+5917000100027367
+
+
+
+
+==================================================================
+select * into #temp2 
+  From SalesLT.Customer;
+
+ 
+
+with t as ( select max(customerid)mx from SalesLT.Customer)
+select customerid+mx from #temp2, t;
+
+ 
+
+DECLARE @records INT = 7;
+DECLARE @counts INT = 1;
+
+ 
+
+WHILE @counts <= @records
+BEGIN
+  WITH t AS (SELECT MAX(customerid) AS mx FROM SalesLT.Customer2)
+  INSERT INTO SalesLT.Customer2(customerid, NameStyle, Title, firstname, MiddleName, lastname,Suffix, CompanyName, SalesPerson, EmailAddress, Phone, PasswordHash, PasswordSalt, rowguid,modifieddate)
+  SELECT customerid + mx, NameStyle, Title,firstname + cast(@counts As Varchar),MiddleName,lastname + cast(@counts As Varchar),Suffix, CompanyName, SalesPerson, replace(emailaddress, '@', cast(@counts As Varchar)+'@'), Phone, PasswordHash, PasswordSalt, rowguid, CURRENT_TIMESTAMP
+   FROM SalesLT.Customer2, t;
+
+  SET @counts = @counts + 1;
+  PRINT 'Iteration ' + CAST(@counts AS VARCHAR) + ' completed.';
+END;
+
+============================New==============================
+In sql server
+-- -------------------------Insert Distinct values of EmplyeeName and EmployeeEmail ------------------------------------
+WITH RankedData AS (
+    SELECT
+        EmployeeId,
+        EmployeeName,
+        EmployeeEmail,
+        ROW_NUMBER() OVER (PARTITION BY EmployeeName, EmployeeEmail ORDER BY EmployeeId) AS rn
+    FROM DMA.StgEmployees
+)
+MERGE INTO DMA.DimEmployees AS t
+USING (
+    SELECT EmployeeId, EmployeeName, EmployeeEmail
+    FROM RankedData
+    WHERE rn = 1
+) AS s
+ON t.EmployeeId = s.EmployeeId
+WHEN MATCHED THEN
+    UPDATE SET
+        t.EmployeeFirstName = PARSENAME(s.EmployeeName, 2),
+        t.EmployeeLastName = REPLACE(PARSENAME(REPLACE(s.EmployeeName, '@', '.'), 3), '.', '')
+WHEN NOT MATCHED THEN
+    INSERT (EmployeeFirstName, EmployeeLastName, EmployeeEmail)
+    VALUES (
+        PARSENAME(s.EmployeeName, 2),
+        REPLACE(PARSENAME(REPLACE(s.EmployeeName, '@', '.'), 3), '.', ''),
+        s.EmployeeEmail
+);
+
+====================================================================New Stage==================
+-- select * from DMA.DimEmployees;
+
+-- creating stage for the DimEmployees
+-- Drop table DMA.StgEmployees;
+
+create table DMA.StgEmployees(
+EmployeeId int identity(1,1) Primary key,
+EmployeeName nvarchar(max),
+EmployeeEmail nvarchar(max),
+);
+
+select * from DMA.StgEmployees;
+
+
+-- DateDimension creation 
+create table DMA.StgDate(
+DateKey int  Primary key,
+Date date,
+DayofWeek nvarchar(max),
+DayofMonth nvarchar(max),
+MonthName nvarchar(max),
+Quatr nvarchar(max),
+Year int,
+CreatedAt datetime DEFAULT getDate(),
+updatedAt datetime DEFAULT GETDATE()
+)
+
+select * from DMA.StgDate;
+
+-- FactReports creation 
+
+create table DMA.StgReports(
+Id int identity(1,1) Primary key,
+Title nvarchar(max),
+Updates nvarchar(max),
+SubmittedTime datetime,
+EmployeeEmail nvarchar(max)
+);
+
+select * from DMA.StgReports;
+
+
+select * from DMA.StgEmployees;
+/*
+-- create a trigger for for StgEmployees for UpdateAt column
+create trigger StgEmployeeUpdatedAt on DMA.StgEmployees
+after update as 
+Begin
+update DMA.StgEmployees set updatedAt = getdate()
+where EmployeeId in (select EmployeeId from inserted)
+end;
+-- StgDateDim
+create trigger StgDateUpdatedAt on DMA.StgDate
+after update as 
+Begin
+update DMA.StgDate set updatedAt = getdate()
+where DateKey in (select DateKey from inserted)
+end;
+
+-- create a trigger for for StgReports for UpdateAt column
+create trigger StgReportsUpdatedAt on DMA.StgReports
+after update as 
+Begin
+update DMA.StgReports set updatedAt = getdate()
+where Id in (select Id from inserted)
+end;
+
+*/
+
+-- create a control table for mapping of source and Target 
+--
+
+create table DMA.TControlSourceTargetMapping (
+id int identity(1,1),
+SrcFileName nvarchar(max),
+SrcSheetName nvarchar(max),
+SrcColumns nvarchar(max),
+DestinationSource nvarchar(max),
+DestinationDataBase nvarchar(max),
+DestinationSchema nvarchar(maX),
+DestinationTable nvarchar(max),
+DestinationColumns nvarchar(max),
+CreatedAt datetime DEFAULT getDate(),
+updatedAt datetime DEFAULT GETDATE(),
+);
+
+-- create trigger for controlTable updated at
+create trigger tgrTControlUpdatedAt on DMA.TControlSourceTargetMapping
+after update as 
+Begin
+update DMA.TControlSourceTargetMapping set updatedAt = getdate()
+where Id in (select Id from inserted)
+end;
+-- ------ Insertion into ControlUpdatesTable 
+select * from DMA.TControlSourceTargetMapping where DestinationTable='StgEmployees';
+
+insert into DMA.TControlSourceTargetMapping (SrcFileName, SrcSheetName, SrcColumns,DestinationSource,DestinationDataBase,DestinationSchema,DestinationTable,DestinationColumns)
+values ('Updates', 'Sheet1', 'Update Title', 'Sql Server', 'prospectmanagement', 'DMA', 'StgReports', 'Title'),
+('Updates', 'Sheet1', 'Update', 'Sql Server', 'prospectmanagement', 'DMA', 'StgReports', 'Updates'),
+('Updates', 'Sheet1', 'Submitted Time', 'Sql Server', 'prospectmanagement', 'DMA', 'StgReports', 'SubmittedTime'),
+('Updates', 'Sheet1', 'Submitter''s Email', 'Sql Server', 'prospectmanagement', 'DMA', 'StgEmployees', 'EmployeeName'),
+('Updates', 'Sheet1', 'Submitter''s Email', 'Sql Server', 'prospectmanagement', 'DMA', 'StgEmployees', 'EmployeeEmail');
+
+
+
+-- -----------------------------------------------------
+select * from DMA.TControlSourceTargetMapping;
+--
+update DMA.TControlSourceTargetMapping 
+set SrcFileName = 'Updates.xlsx';
+
+-- StageDateDim check 
+/*
+with t as (
+	select 1 as sr_no
+	union all
+	select sr_no+1 from t where sr_no < 90
+),
+t1 as (
+	select DateAdd(Day, sr_no-1,getdate()) as a from t
+)
+Insert into DMA.StgDate(DateKey,Date, DayOfWeek, DayOfMonth, MonthName, Quatr, Year)
+select replace(convert(date, a), '-', '') as DateKey, convert(date, a) as Date, DATENAME(Weekday, a) as DayOfWeek, 
+day(a) as DayOfMonth, DATENAME(MONTH, a) AS MonthName,  'Q' + CAST(DATEPART(QUARTER, a) AS NVARCHAR(MAX)) AS Quatr,
+YEAR(a) AS Year from t1
+where not exists(
+select 1 from DMA.StgDate
+where DateKey = replace(convert(date, a), '-', '')
+);
+
+
+*/
+
+select * from DMA.StgDate;
+
+-- Logs table
+select LogId, DataFactory, PipelineName, SourceFolderName, SourceFileName, DestinationFolderName, DestinationFileName, TriggerTime, FilesRead,  ExecutionDetailsStatus,CopyDuration 
+into DMA.LogsSourceStage from  dev.Logs_Stage_raw;
+
+truncate table DMA.LogsSourceStage;
+
+select * from DMA.LogsSourceStage;
+/*
+ALTER TABLE DMA.LogsSourceStage
+DROP COLUMN SourceFolderName;
+
+*/
+
+
+-- Exec Sp_rename 'DMA.LogsSourceStage.DestinationFileName', 'DestinationTable';
+
+create procedure DMA.Insert_LogsSourceStage
+@DataFactory nvarchar(max),
+@PipelineName nvarchar(max),
+@SourceFileName nvarchar(max),
+@DestinationType nvarchar(max),
+@DestinationTable nvarchar(max),
+@TriggerTime DateTime,
+@FilesRead int,
+@ExecutionDetailsStatus nvarchar(max),
+@CopyDuration int,
+@RowsRead int,
+@RowsCopied int,
+@DestinationSchema nvarchar(max)
+as
+Begin
+ insert into DMA.LogsSourceStage (DataFactory, PipelineName, SourceFileName, DestinationType,DestinationTable,TriggerTime,FilesRead,ExecutionDetailsStatus,CopyDuration,RowsRead,RowsCopied,DestinationSchema)
+ values(@DataFactory,@PipelineName,@SourceFileName,@DestinationType,@DestinationTable,@TriggerTime,@FilesRead,@ExecutionDetailsStatus,@CopyDuration,@RowsRead,@RowsCopied,@DestinationSchema)
+
+End
+
+
+-- Alter table DMA.LogsSourceStage add DestinationSchema nvarchar(max)
+
+-- truncate table DMA.StgEmployees;
+
+select * from DMA.StgEmployees;
+
+-- truncate table DMA.StgReports;
+
+select * from DMA.StgReports;
+
+ -- truncate table DMA.LogsSourceStage;
+
+select * from DMA.LogsSourceStage;
+
+-- Now update the Updates column and submittedTime to required format
+update DMA.StgReports
+set Updates = REPLACE(Updates, '<[^>]+>', '');
+
+--  ((\<)[\w\/\=\x22\x27\:-;]+(>))
+
+select * into #temp from DMA.StgReports;
+
+select * from #temp;
+
+update #temp
+set Updates = REPLACE(Updates, '<[a-zA-Z\/][^>]*>', '');
+
+select Updates from DMA.StgReports where id = 32;
+
+select Updates from #temp where id = 32;
+
+
+select PARSENAME('dilvin.riyo@xyenta.com', 1); -- com
+
+select PARSENAME('dilvin.riyo@xyenta.com', 3); -- dilvin fname
+
+select replace(PARSENAME('dilvin.riyo@xyenta.com', 2), '@' , ''); --riyoxyenta
+
+select replace('dilvin.riyo@xyenta.com', '@', '.'); -- dilvin.riyo.xyenta.com
+
+select replace(PARSENAME(replace('dilvin.riyo@xyenta.com', '@', '.'),3),'.', '') --riyo
+
+-- -update for EmpName 
+select * into #tempE from DMA.StgEmployees;
+
+select * from #tempE;
+
+select  EmployeeName, EmployeeEmail from #tempE group by EmployeeName, EmployeeEmail;
+
+WITH RankedData2 AS (
+    SELECT
+        EmployeeId,
+        EmployeeName,
+        EmployeeEmail,
+        ROW_NUMBER() OVER (PARTITION BY EmployeeName, EmployeeEmail ORDER BY EmployeeId) AS rn
+    FROM #tempE
+)select * from RankedData2 where rn = 1;
+
+select * into #tempDE2 from DMA.DimEmployees;
+
+select * from #tempDE;
+
+select * from #tempDE2;
+
+/*
+
+Merge into #tempDE as t
+using #tempE as s
+on t.EmployeeId = s.EmployeeId
+when matched then
+	update set 
+	     t.EmployeeFirstName = PARSENAME(s.EmployeeName, 2),
+		 t.EmployeeLastName = REPLACE(PARSENAME(REPLACE(s.EmployeeName, '@', '.'), 3), '.', '')
+when not matched then 
+Insert (EmployeeFirstName, EmployeeLastName,EmployeeEmail)
+values 
+(PARSENAME(s.EmployeeName, 2), REPLACE(PARSENAME(REPLACE(s.EmployeeName, '@', '.'), 3), '.', ''), s.EmployeeEmail);
+
+*/
+
+truncate table #tempDE2
+
+select * from #tempDE2;
+
+-- -------------------------Insert Distinct values of EmplyeeName and EmployeeEmail ------------------------------------
+WITH RankedData AS (
+    SELECT
+        EmployeeId,
+        EmployeeName,
+        EmployeeEmail,
+        ROW_NUMBER() OVER (PARTITION BY EmployeeName, EmployeeEmail ORDER BY EmployeeId) AS rn
+    FROM DMA.StgEmployees
+)
+MERGE INTO #tempDE2 AS t
+USING (
+    SELECT EmployeeId, EmployeeName, EmployeeEmail
+    FROM RankedData
+    WHERE rn = 1
+) AS s
+ON t.EmployeeId = s.EmployeeId
+WHEN MATCHED THEN
+    UPDATE SET
+        t.EmployeeFirstName = PARSENAME(s.EmployeeName, 3),
+        t.EmployeeLastName = REPLACE(PARSENAME(REPLACE(s.EmployeeName, '@', '.'), 3), '.', '')
+WHEN NOT MATCHED THEN
+    INSERT (EmployeeFirstName, EmployeeLastName, EmployeeEmail)
+    VALUES (
+        PARSENAME(s.EmployeeName, 3),
+        REPLACE(PARSENAME(REPLACE(s.EmployeeName, '@', '.'), 3), '.', ''),
+        s.EmployeeEmail
+);
+
+-- -------------------------------------------------------------------------------------------
+select * from DMA.StgReports;
+
+with DistinctData as(
+select Id, Title,Updates ,SubmittedTime, EmployeeEmail, ROW_NUMBER() over(partition by Title, SubmittedTime, EmployeeEmail order by Id ) as rn 
+from DMA.StgReports
+)select 
+	stg.Title,
+	stg.Updates,
+	stg.SubmittedTime,
+	de.EmployeeEmail
+from DistinctData stg
+join DMA.DimEmployees de on stg.EmployeeEmail = de.EmployeeEmail
+where stg.rn = 1;
+
+select * into #tempF2 from DMA.FactReports;
+
+select * from #tempF2;
+-- -Insert into Facts from Stages and Dimesnions
+
+select max(SubmittedTime) from DMA.StgReports; -- 2023-12-11 14:23:55.000
+
+select min(SubmittedTime) from DMA.StgReports; -- 2023-09-19 09:22:36.000
+
+with DistinctData as(
+select Id, Title,Updates ,SubmittedTime, EmployeeEmail, ROW_NUMBER() over(partition by Title, SubmittedTime, EmployeeEmail order by Id ) as rn 
+from DMA.StgReports
+)
+insert into #tempF2(Title,Updates,SubmittedTime,DEmployeesId,DDateKey)
+select 
+	stg.Title,
+	stg.Updates,
+	stg.SubmittedTime,
+	de.EmployeeId,
+	dd.DateKey
+from DistinctData stg
+join DMA.DimEmployees de on stg.EmployeeEmail = de.EmployeeEmail
+join DMA.DimDate dd on convert(Date,stg.SubmittedTime) = dd.Date
+where stg.rn = 1;
+
+
+select replace(replace(replace(replace(Updates, '<div>', ''), '</div>', ''), '<br>', ''), '&nbsp', '') from #tempF2
+
+update #tempF2
+set Updates = replace(replace(replace(replace(Updates, '<div>', ''), '</div>', ''), '<br>', ''), '&nbsp', '');
+
+select * from #tempF2;
+
+==================================================================New Olap ===============================================================================
+
+select name from sys.schemas;
+-- DimEmployees creation
+-- Drop table DMA.DimEmployees;
+create table DMA.DimEmployees(
+EmployeeId int identity(1,1) Primary key,
+EmployeeFirstName nvarchar(max),
+EmployeeLastName nvarchar(max),
+EmployeeEmail nvarchar(max),
+CreatedAt datetime DEFAULT getDate(),
+updatedAt datetime DEFAULT GETDATE(),
+);
+
+select * from DMA.DimEmployees;
+
+
+-- DateDimension creation 
+-- Drop table DMA.DimDate;
+
+create table DMA.DimDate(
+DateKey int  Primary key,
+Date date,
+DayofWeek nvarchar(max),
+DayofMonth nvarchar(max),
+MonthName nvarchar(max),
+Quatr nvarchar(max),
+Year int,
+CreatedAt datetime DEFAULT getDate(),
+updatedAt datetime DEFAULT GETDATE()
+)
+
+select * from DMA.DimDate;
+
+-- FactReports creation 
+-- Drop table DMA.FactReports;
+create table DMA.FactReports(
+Id int identity(1,1) Primary key,
+Title nvarchar(max),
+Updates nvarchar(max),
+SubmittedTime datetime,
+DEmployeesId int,
+DDateKey int,
+CreatedAt datetime DEFAULT getDate(),
+updatedAt datetime DEFAULT GETDATE(),
+FOREIGN KEY (DEmployeesId) REFERENCES DMA.DimEmployees(EmployeeId),
+FOREIGN KEY (DDateKey) REFERENCES DMA.DimDate(DateKey)
+);
+
+select * from DMA.FactReports;
+
+-- checks for PK and FK --
+SELECT * FROM information_schema.key_column_usage
+
+-- create a triggers for updatedAt values in Dim and Fact Tables
+create trigger UpdatedAtDimEmp2 on DMA.DimEmployees
+after update as
+Begin
+update DMA.DimEmployees set updatedAt = getdate()
+where EmployeeId in (select EmployeeId from inserted)
+end;
+
+-- 
+create trigger UpdatedAtDimDate2 on DMA.DimDate
+after update as
+Begin
+update DMA.DimDate set updatedAt = getdate()
+where DateKey in (select DateKey from inserted)
+end;
+
+
+
+-- create a triggers for Fact to updateAt column
+create trigger UpdatedAtFact2 on DMA.FactReports
+after update as
+Begin
+update DAM.FactReports set updatedAt = getdate()
+where id in (select id from inserted)
+end;
+
+-- Populate DimDate Table upto 3months from now
+
+SELECT CONVERT(date, GETDATE()); -- Date
+
+select day(GetDate()); --DayofMonth
+
+SELECT DATENAME(Week, getdate()); --WeekNumber of year
+
+select DATENAME(Weekday, getdate()); -- Weekday Name
+
+select year(getDate());
+
+-- truncate table DMA.DimDate;
+
+-- --------------------------------------------------------
+with t as (
+	select 1 as sr_no
+	union all
+	select sr_no+1 from t where sr_no < 90
+),
+t1 as (
+	select DateAdd(Day, sr_no-1,getdate()) as a from t
+)
+Insert into DMA.DimDate(DateKey,Date, DayOfWeek, DayOfMonth, MonthName, Quatr, Year)
+select replace(convert(date, a), '-', '') as DateKey, convert(date, a) as Date, DATENAME(Weekday, a) as DayOfWeek, 
+day(a) as DayOfMonth, DATENAME(MONTH, a) AS MonthName,  'Q' + CAST(DATEPART(QUARTER, a) AS NVARCHAR(MAX)) AS Quatr,
+YEAR(a) AS Year from t1;
+
+-- 
+select * from DMA.DimDate;
+
+select * from dev.Logs_Stage_raw;
+
+
+-- truncate table DMA.DimEmployees;
+
+select * from DMA.DimEmployees;
+-- when ever table ref as fk constraint in another table .. instead of truncate use below query to Truncate the rows
+-- DELETE FROM DMA.DimEmployees;
+
+-- DELETE FROM DMA.DimDate;
+
+select * from DMA.DimDate;
+
+
+
