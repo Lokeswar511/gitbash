@@ -41,3 +41,26 @@ filtered_unexpected = df2.filter(col('unexpectedResults') == 'false').show()
 |  4|   NA|   M|  35|   300|            false|
 |  6|  Ron|   S|   $|   500|            false|
 +---+-----+----+----+------+-----------------+
+
+============================================= or ========================================================
+
+filepath2 = 'dbfs:/FileStore/testdata2-1.csv'
+df = spark.read.format('csv').option('Header', 'True').option('inferSchema', 'True').load(filepath2)
+
+df.show()
+
+# # Define the regex pattern to allow alphanumeric characters and specific special characters
+# allowed_pattern = "^[a-zA-Z0-9#$&*]+$"
+
+not_allowed_pattern = r"\$|#|&|NA|\*"
+
+
+conditions = [col(c).rlike(not_allowed_pattern) for c in df.columns]
+
+
+overall_condition = reduce(lambda x, y: x | y, conditions)
+
+df2 = df.withColumn('wrong', overall_condition)
+
+# Filter out the rows where 'wrong' is True (indicating the presence of not allowed patterns)
+filtered_unexpected = df2.filter(col('wrong') == True).show()
