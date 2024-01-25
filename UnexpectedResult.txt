@@ -1,0 +1,43 @@
+Id,first,last,age,salary
+1,Neha,D,#,100
+2,#,K,,200
+3,$,B,30,200
+4,NA,M,35,300
+5,Mark,L,29,100
+6,Ron,S,$,500
+
+
+
+df = spark.read.format('csv').option('Header', 'True').option('inferSchema', 'True').load(filepath)
+
+unexpected_values = ["$", "#", "&", 'NA']
+
+df2 = df.withColumn(
+    "unexpectedResults",
+    when(reduce(lambda x, y: x | y, (col(c).isin(unexpected_values) for c in df.columns)), False).otherwise(True)
+)
+
+df2.show()
+
++---+-----+----+----+------+-----------------+
+| Id|first|last| age|salary|unexpectedResults|
++---+-----+----+----+------+-----------------+
+|  1| Neha|   D|   #|   100|            false|
+|  2|    #|   K|null|   200|            false|
+|  3|    $|   B|  30|   200|            false|
+|  4|   NA|   M|  35|   300|            false|
+|  5| Mark|   L|  29|   100|             true|
+|  6|  Ron|   S|   $|   500|            false|
++---+-----+----+----+------+-----------------+
+
+filtered_unexpected = df2.filter(col('unexpectedResults') == 'false').show()
+
++---+-----+----+----+------+-----------------+
+| Id|first|last| age|salary|unexpectedResults|
++---+-----+----+----+------+-----------------+
+|  1| Neha|   D|   #|   100|            false|
+|  2|    #|   K|null|   200|            false|
+|  3|    $|   B|  30|   200|            false|
+|  4|   NA|   M|  35|   300|            false|
+|  6|  Ron|   S|   $|   500|            false|
++---+-----+----+----+------+-----------------+
